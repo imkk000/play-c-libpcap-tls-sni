@@ -6,4 +6,4 @@ start:
 	sudo ./server
 
 compile:
-	gcc -Wall -o server sniffer.c -lpcap
+	gcc -Wall -o server sniffer.c -lpcap -lpthread
