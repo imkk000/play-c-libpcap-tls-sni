@@ -117,20 +117,25 @@ process *find_pid_by_inode(unsigned inode) {
       char full[PATH_MAX], link[PATH_MAX];
       sprintf(full, "%s/%s", fd_path, fd_entry->d_name);
       ssize_t n = readlink(full, link, sizeof(link) - 1);
+      if (n < 0)
+        continue;
       link[n] = 0;
-      if (n <= 0 || strcmp(link, name) != 0)
+      if (strcmp(link, name) != 0)
         continue;
 
       char comm[PATH_MAX];
       sprintf(comm, "/proc/%s/comm", pid_enty->d_name);
       FILE *f = fopen(comm, "r");
       if (f) {
-        fgets(link, sizeof(link), f);
+        char proc_name[PATH_MAX];
+        fgets(proc_name, sizeof(proc_name), f);
         fclose(f);
-        link[strcspn(link, "\n")] = '\0';
+        proc_name[strcspn(proc_name, "\n")] = '\0';
         process *p = malloc(sizeof(process));
-        p->pid = pid_enty->d_name;
-        p->name = link;
+        p->pid = strdup(pid_enty->d_name);
+        p->name = strdup(proc_name);
+        closedir(fd_dir);
+        closedir(proc);
         return p;
       }
     }
@@ -178,12 +183,15 @@ void handler(u_char *user, const struct pcap_pkthdr *h, const u_char *bytes) {
 
   process *proc = find_pid_by_inode(inode);
   if (proc == NULL) {
-    free(proc);
+    free(sni);
+    free(info);
     printf("\n");
     return;
   }
   printf(" pid=%s (%s)\n", proc->pid, proc->name);
 
+  free(proc->pid);
+  free(proc->name);
   free(proc);
   free(sni);
   free(info);
